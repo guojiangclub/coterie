@@ -1,0 +1,24 @@
+{
+    "name": "ibrand/coterie-backend",
+    "description": "ibrand saas backend for Laravel Application.",
+    "keywords": [
+        "ibrand",
+        "saas ",
+        "backend",
+        "laravel"
+    ],
+    "authors": [
+        {
+            "name": "peter chen",
+            "email": "chenhao@element.vip"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "iBrand\\Coterie\\Backend\\": "src/"
+        }
+    },
+    "license": "MIT",
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

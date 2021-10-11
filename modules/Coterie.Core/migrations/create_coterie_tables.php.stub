@@ -1,0 +1,272 @@
+<?php
+
+/*
+ * This file is part of ibrand/coterie.
+ *
+ * (c) 果酱社区 <https://guojiang.club>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Migrations\Migration;
+
+class CreateCoterieTables extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+
+        $prefix = config('ibrand.app.database.prefix', 'ibrand_');
+
+        //TODO:: 完善字段以及其他表,数据字典位置：
+
+        //圈子主表
+        if (!Schema::hasTable($prefix . 'coterie')) {
+
+            Schema::create($prefix . 'coterie', function (Blueprint $table) {
+                $table->increments('id');
+                $table->integer('user_id');//圈子创建用户ID,也就是圈主 id
+                $table->string('name');   //名称
+                $table->text('description')->nullable();//描述
+                $table->string('avatar')->nullable();//头像
+                $table->integer('member_count')->default(0);//成员数量
+                $table->integer('content_count')->default(0);//主题数量
+                $table->integer('recommend_count')->default(0);//精华数量
+                $table->integer('ask_count')->default(0);//问答数量
+                $table->string('cost_type');//free:免费,charge:收费
+                $table->string('duration_type')->default('joined');//joined：加入后一年，deadline 固定期限截止日。 deadline 第一版功能先不提供
+                $table->timestamp('recommend_at')->nullable();//圈子被推荐时间
+                $table->integer('price')->default(0);//入圈价格，单位分，0 表示免费
+                $table->text('notice')->nullable();//付费须知
+
+                $table->index('user_id');
+                $table->string('client_id')->nullable();
+
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
+
+        //圈子角色表
+        if (!Schema::hasTable($prefix . 'coterie_member')) {
+
+            Schema::create($prefix . 'coterie_member', function (Blueprint $table) {
+                $table->increments('id');
+                $table->integer('coterie_id');//圈子ID
+                $table->integer('user_id');// 会员id
+                $table->string('user_type')->default('normal');   //owner:圈主 guest:嘉宾 normal:普通会员
+                $table->text('user_meta')->nullable();//存储用户头像，昵称等
+                $table->timestamp('joined_at');//加入时间
+                $table->tinyInteger('is_forbidden')->default(0);//是否禁言，1 为禁言，默认为0，不禁言
+
+                $table->index('coterie_id');
+                $table->string('client_id')->nullable();
+
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
+
+
+        //圈子订单表，存储圈子的订单付费信息，当用户没点击一次付费，发起支付时创建该条信息
+        if (!Schema::hasTable($prefix . 'coterie_order')) {
+
+            Schema::create($prefix . 'coterie_order', function (Blueprint $table) {
+                $table->increments('id');
+                $table->string('order_no'); //订单编号
+                $table->integer('coterie_id');//圈子ID
+                $table->integer('user_id');// 会员id
+                $table->timestamp('paid_at')->nullable();//付费时间
+                $table->integer('price');//付费金额
+
+                $table->index(['order_no','coterie_id','user_id']);
+                $table->string('client_id')->nullable();
+
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
+
+
+        //主题内容，用户在圈子内发布的内容
+        if (!Schema::hasTable($prefix . 'coterie_content')) {
+
+            Schema::create($prefix . 'coterie_content', function (Blueprint $table) {
+                $table->increments('id');
+                $table->integer('coterie_id')->default(0);//圈子ID
+                $table->integer('user_id')->default(0);// 用户id 0官方发布
+                $table->string('style_type')->default('default'); //default:普通内容动态 question:问答型动态
+                $table->string('content_type')->default('default'); //default: 默认图文 link: 链接分享 file:文件分享，本期不实现文件分享内容
+                $table->text('description');//描述,限制1000个字符以内。
+                $table->text('link')->nullable();//链接详情。
+                $table->text('img_list')->nullable();//展示图片，限制9张图片，存放图片连接url
+                $table->text('tags_list')->nullable();//标签，每个主题内容限制3个标签
+                $table->text('audio_list')->nullable();//音频文件集合
+                $table->integer('comment_count')->default(0);//评论数
+                $table->integer('praise_count')->default(0);//点赞数
+                $table->tinyInteger('status')->default(1);//状态1通过，0待审核，2不通过。
+                $table->timestamp('recommended_at')->nullable();//推荐时间
+                $table->timestamp('stick_at')->nullable();//置顶时间，圈子中只有一个动态可以置顶
+                $table->text('meta')->nullable();//其他信息等
+
+                $table->index(['coterie_id','user_id']);
+                $table->string('client_id')->nullable();
+
+                $table->timestamps();
+                $table->softDeletes();
+
+            });
+        }
+
+
+          //提问表
+        if (!Schema::hasTable($prefix . 'coterie_question')) {
+
+            Schema::create($prefix . 'coterie_question', function (Blueprint $table) {
+                $table->increments('id');
+                $table->integer('content_id')->nullable();//关联的content_id，未回答问题前这个为字段为空
+                $table->integer('coterie_id');//圈子ID
+                $table->integer('user_id'); //提问用户id
+                $table->integer('answer_user_id'); //被邀请回答的用户id
+                $table->text('content');//评论内容
+                $table->text('img_list')->nullable();//展示图片，限制9张图片，存放图片连接url
+
+                $table->index('content_id');
+                $table->string('client_id')->nullable();
+
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
+
+
+        //评论表：主要用于记录游记评论数据
+        if (!Schema::hasTable($prefix . 'coterie_content_comment')) {
+
+            Schema::create($prefix . 'coterie_content_comment', function (Blueprint $table) {
+                $table->increments('id');
+                $table->integer('user_id');//用户id
+                $table->integer('content_id'); //内容id
+                $table->text('content');//评论内容
+                $table->text('meta')->nullable();//用户数据存储用户头像，昵称等
+                $table->tinyInteger('status')->default(1);//状态1通过，0待审核，2不通过。
+
+                $table->index('content_id');
+                $table->string('client_id')->nullable();
+
+                $table->timestamps();
+                $table->softDeletes();
+
+            });
+        }
+
+
+         //评论回复表
+        if (!Schema::hasTable($prefix . 'coterie_content_reply')) {
+
+            Schema::create($prefix . 'coterie_content_reply', function (Blueprint $table) {
+                $table->increments('id');
+                $table->integer('user_id');//用户id
+                $table->integer('content_id'); //内容id
+                $table->integer('comment_id'); //评论id
+                $table->text('content');//评论内容
+                $table->text('meta')->nullable();//回复者的用户数据存储用户头像，昵称等
+                $table->text('to_meta')->nullable();//被回复的用户数据存储用户头像，昵称等
+                $table->tinyInteger('status')->default(1);//状态1通过，0待审核，2不通过。
+
+                $table->index('content_id');
+                $table->index('comment_id');
+                $table->string('client_id')->nullable();
+
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
+
+
+
+        //点赞表
+        if (!Schema::hasTable($prefix . 'coterie_content_praise')) {
+
+            Schema::create($prefix . 'coterie_content_praise', function (Blueprint $table) {
+                $table->increments('id');
+                $table->integer('user_id');//用户id
+                $table->integer('content_id'); //内容id
+                $table->text('meta')->nullable();//用户数据存储用户头像，昵称等
+
+                $table->index('content_id');
+                $table->string('client_id')->nullable();
+
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
+
+
+
+      //圈子邀请表
+         if (!Schema::hasTable($prefix . 'coterie_invite')) {
+
+             Schema::create($prefix . 'coterie_invite', function (Blueprint $table) {
+                 $table->increments('id');
+                 $table->string('code');
+                 $table->integer('coterie_id'); //圈子id
+                 $table->string('user_type')->default('guest');//guest:嘉宾 normal:普通会员
+                 $table->timestamp('used_at')->nullable();//使用时间
+                 $table->index('coterie_id');
+                 $table->string('client_id')->nullable();
+
+                 $table->timestamps();
+                 $table->softDeletes();
+             });
+         }
+
+
+     //邀请关系表
+         if (!Schema::hasTable($prefix . 'coterie_invite_member')) {
+
+             Schema::create($prefix . 'coterie_invite_member', function (Blueprint $table) {
+
+                 $table->increments('id');
+                 $table->integer('coterie_id');
+                 $table->integer('user_id');
+                 $table->integer('inviter_user_id');
+
+                 $table->index('coterie_id');
+                 $table->string('client_id')->nullable();
+
+                 $table->timestamps();
+                 $table->softDeletes();
+             });
+         }
+
+
+
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        $prefix = config('ibrand.app.database.prefix', 'ibrand_');
+
+        Schema::dropIfExists($prefix.'coterie');
+        Schema::dropIfExists($prefix.'coterie_member');
+        Schema::dropIfExists($prefix.'coterie_order');
+        Schema::dropIfExists($prefix.'coterie_content');
+        Schema::dropIfExists($prefix.'coterie_question');
+        Schema::dropIfExists($prefix.'coterie_content_comment');
+        Schema::dropIfExists($prefix.'coterie_content_reply');
+        Schema::dropIfExists($prefix.'coterie_content_praise');
+    }
+}
