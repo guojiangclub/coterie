@@ -43,7 +43,7 @@ php artisan ibrand:coterie-install
 
 ## 小程序
 
-小程序源码地址：[果酱圈子小程序源码](https://github.com/guojiangclub/coterie.miniprogram)
+小程序源码地址：[果酱圈子小程序源码](https://gitee.com/guojiangclub/coterie.miniprogram)
 
 ## 交流
 
